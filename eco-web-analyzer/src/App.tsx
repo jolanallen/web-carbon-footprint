@@ -1,5 +1,6 @@
 import EcoWebAnalyzer from './components/EcoWebAnalyzer';
 
+
 function App() {
   return (
     <div>

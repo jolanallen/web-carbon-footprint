@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Leaf, Globe, Droplet, Zap, TrendingDown, Award, Share2, Info } from 'lucide-react';
 import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
-import './EcoWebAnalyzer.css';
 
 
 const EcoWebAnalyzer = () => {
