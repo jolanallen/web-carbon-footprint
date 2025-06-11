@@ -40,4 +40,8 @@ window.addEventListener('message', async (message) => {
       "@": path.resolve(__dirname, "./src"),
     },
   },
+  build: {
+    outDir: 'dist', // dossier de sortie
+    emptyOutDir: true, // vide le dossier avant chaque build
+  },
 }));
