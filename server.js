@@ -51,7 +51,7 @@ app.post('/api/ask-ai', async (req, res) => {
                 parts: [{ text: prompt }]
             }]
         };
-        const apiKey = "AIzaSyAJzDEgRu13oqkUN_yxhG2hJgBGExVu_wI";
+        const apiKey = "your_api_key";
         const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
 
         const apiResponse = await fetch(apiUrl, {
