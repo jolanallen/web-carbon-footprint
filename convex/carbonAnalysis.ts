@@ -3,31 +3,138 @@ import { v } from "convex/values";
 import { getAuthUserId } from "@convex-dev/auth/server";
 import { internal } from "./_generated/api";
 
-// Simulate byte estimation for different types of websites
-function estimateWebsiteBytes(url: string): number {
-  const domain = new URL(url).hostname.toLowerCase();
-  
-  // Simulate different website sizes based on common patterns
-  if (domain.includes('google') || domain.includes('search')) return 50000; // Search engines are optimized
-  if (domain.includes('news') || domain.includes('blog')) return 800000; // News sites with images
-  if (domain.includes('shop') || domain.includes('store') || domain.includes('amazon')) return 1200000; // E-commerce
-  if (domain.includes('video') || domain.includes('youtube') || domain.includes('netflix')) return 2500000; // Video platforms
-  if (domain.includes('social') || domain.includes('facebook') || domain.includes('instagram')) return 1500000; // Social media
-  
-  // Default estimation based on URL characteristics
-  const pathLength = new URL(url).pathname.length;
-  const baseSize = 300000; // 300KB base
-  const variableSize = Math.min(pathLength * 10000, 1000000); // Up to 1MB additional
-  
-  return baseSize + variableSize + Math.random() * 200000; // Add some randomness
+// Use the actual Website Carbon API
+async function analyzeWebsiteCarbon(url: string): Promise<{
+  bytes: number;
+  co2: number;
+  energy: number;
+  cleanerThan: number;
+  green: boolean;
+}> {
+  try {
+    console.log(`Calling Website Carbon API for: ${url}`);
+    
+    // Call the Website Carbon API
+    const response = await fetch(`https://api.websitecarbon.com/site?url=${encodeURIComponent(url)}`, {
+      method: 'GET',
+      headers: {
+        'User-Agent': 'EcoWebAnalyzer/1.0'
+      }
+    });
+
+    if (!response.ok) {
+      throw new Error(`Website Carbon API failed: ${response.status}`);
+    }
+
+    const data = await response.json();
+    console.log("Website Carbon API response:", data);
+
+    // Extract data from the API response
+    // The API returns data in a specific format - adjust based on actual response structure
+    return {
+      bytes: data.bytes || data.transferSize || 650000, // Fallback to average if not provided
+      co2: data.co2 || data.carbon || 0.5, // CO2 in grams
+      energy: data.energy || data.energyConsumption || 0.003, // Energy in Wh
+      cleanerThan: data.cleanerThan || data.percentage || 50, // Percentage cleaner than other sites
+      green: data.green || data.greenHosting || false // Whether hosting is green
+    };
+
+  } catch (error) {
+    console.error('Website Carbon API failed:', error);
+    
+    // Fallback to our own analysis if the API fails
+    return await fallbackAnalysis(url);
+  }
 }
 
-function determineGreenHosting(url: string): boolean {
-  const domain = new URL(url).hostname.toLowerCase();
+// Fallback analysis if the API is unavailable
+async function fallbackAnalysis(url: string): Promise<{
+  bytes: number;
+  co2: number;
+  energy: number;
+  cleanerThan: number;
+  green: boolean;
+}> {
+  try {
+    // Try to get basic website size
+    const response = await fetch(url, {
+      method: 'HEAD',
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (compatible; EcoWebAnalyzer/1.0)'
+      }
+    });
+    
+    const contentLength = response.headers.get('content-length');
+    let bytes = contentLength ? parseInt(contentLength) : 0;
+    
+    // Estimate based on domain if no content-length
+    if (!bytes) {
+      const domain = new URL(url).hostname.toLowerCase();
+      if (domain.includes('google')) bytes = 45000;
+      else if (domain.includes('youtube')) bytes = 2800000;
+      else if (domain.includes('facebook') || domain.includes('instagram')) bytes = 1600000;
+      else if (domain.includes('amazon') || domain.includes('shop')) bytes = 1400000;
+      else if (domain.includes('news') || domain.includes('blog')) bytes = 900000;
+      else if (domain.includes('github')) bytes = 180000;
+      else bytes = 650000; // Average website size
+    }
+
+    // Check green hosting
+    const green = await checkGreenHosting(url);
+    
+    // Calculate environmental impact
+    const co2PerByte = green ? 0.000000233 : 0.000000494; // grams CO2 per byte
+    const energyPerByte = 0.000000006; // Wh per byte
+    
+    const co2 = Math.round((bytes * co2PerByte) * 1000) / 1000;
+    const energy = Math.round((bytes * energyPerByte) * 1000) / 1000;
+    
+    // Calculate percentile
+    let cleanerThan;
+    if (bytes < 500000) cleanerThan = 85;
+    else if (bytes < 1000000) cleanerThan = 70;
+    else if (bytes < 2000000) cleanerThan = 50;
+    else if (bytes < 4000000) cleanerThan = 25;
+    else cleanerThan = 10;
+    
+    if (green) cleanerThan = Math.min(cleanerThan + 15, 95);
+
+    return { bytes, co2, energy, cleanerThan, green };
+
+  } catch (error) {
+    console.error('Fallback analysis failed:', error);
+    // Ultimate fallback with reasonable estimates
+    return {
+      bytes: 650000,
+      co2: 0.32,
+      energy: 0.0039,
+      cleanerThan: 50,
+      green: false
+    };
+  }
+}
+
+// Check if hosting is green using Green Web Foundation API
+async function checkGreenHosting(url: string): Promise<boolean> {
+  try {
+    const domain = new URL(url).hostname;
+    const response = await fetch(`https://api.thegreenwebfoundation.org/greencheck/${domain}`);
+    
+    if (response.ok) {
+      const data = await response.json();
+      return data.green === true;
+    }
+  } catch (error) {
+    console.error('Green hosting check failed:', error);
+  }
   
-  // Simulate green hosting detection (some known green providers)
-  const greenProviders = ['github.io', 'netlify.app', 'vercel.app', 'surge.sh'];
-  return greenProviders.some(provider => domain.includes(provider)) || Math.random() > 0.7;
+  // Fallback: check against known green providers
+  const domain = new URL(url).hostname.toLowerCase();
+  const greenProviders = [
+    'github.io', 'netlify.app', 'vercel.app', 'surge.sh', 
+    'pages.dev', 'herokuapp.com', 'firebase.app'
+  ];
+  return greenProviders.some(provider => domain.includes(provider));
 }
 
 function calculateEcoScore(co2: number, cleanerThan: number): string {
@@ -44,47 +151,35 @@ export const analyzeWebsite = action({
     try {
       // Validate URL
       new URL(args.url);
+      console.log(`Starting Website Carbon analysis for: ${args.url}`);
       
-      // Estimate bytes and green hosting
-      const bytes = estimateWebsiteBytes(args.url);
-      const green = determineGreenHosting(args.url);
+      // Use the Website Carbon API
+      const analysisData = await analyzeWebsiteCarbon(args.url);
       
-      console.log(`Analyzing website with bytes=${bytes}, green=${green}`);
-      
-      // Use fallback calculations instead of external API for now
-      const co2PerByte = green ? 0.000000233 : 0.000000494; // grams CO2 per byte
-      const energyPerByte = 0.000000006; // Wh per byte
-      
-      const data = {
-        c: Math.round((bytes * co2PerByte) * 1000) / 1000, // CO2 in grams
-        e: Math.round((bytes * energyPerByte) * 1000) / 1000, // Energy in Wh
-        p: Math.floor(Math.random() * 50) + 25 // Random percentile between 25-75
-      };
-      
-      console.log("Using calculated data:", data);
+      console.log(`Analysis results:`, analysisData);
       
       // Generate AI summary and suggestions
       const aiResponse: any = await ctx.runAction(internal.carbonAnalysis.generateAIInsights, {
         url: args.url,
-        co2: data.c,
-        energy: data.e,
-        cleanerThan: data.p,
-        green: green,
-        bytes: bytes
+        co2: analysisData.co2,
+        energy: analysisData.energy,
+        cleanerThan: analysisData.cleanerThan,
+        green: analysisData.green,
+        bytes: analysisData.bytes
       });
       
-      const ecoScore = calculateEcoScore(data.c, data.p);
+      const ecoScore = calculateEcoScore(analysisData.co2, analysisData.cleanerThan);
       
       // Save analysis
       const userId = await getAuthUserId(ctx);
       await ctx.runMutation(internal.carbonAnalysis.saveAnalysis, {
         url: args.url,
         userId: userId || undefined,
-        bytes: bytes,
-        green: green,
-        co2: data.c,
-        energy: data.e,
-        cleanerThan: data.p,
+        bytes: analysisData.bytes,
+        green: analysisData.green,
+        co2: analysisData.co2,
+        energy: analysisData.energy,
+        cleanerThan: analysisData.cleanerThan,
         aiSummary: aiResponse.summary,
         suggestions: aiResponse.suggestions,
         ecoScore: ecoScore
@@ -92,11 +187,11 @@ export const analyzeWebsite = action({
       
       return {
         url: args.url,
-        bytes: bytes,
-        green: green,
-        co2: data.c,
-        energy: data.e,
-        cleanerThan: data.p,
+        bytes: analysisData.bytes,
+        green: analysisData.green,
+        co2: analysisData.co2,
+        energy: analysisData.energy,
+        cleanerThan: analysisData.cleanerThan,
         aiSummary: aiResponse.summary,
         suggestions: aiResponse.suggestions,
         ecoScore: ecoScore

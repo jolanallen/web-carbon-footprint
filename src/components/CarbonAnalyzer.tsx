@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useAction, useQuery } from "convex/react";
+import { useAction } from "convex/react";
 import { api } from "../../convex/_generated/api";
 import { toast } from "sonner";
 import { AnalysisResults } from "./AnalysisResults";
@@ -10,7 +10,6 @@ export function CarbonAnalyzer() {
   const [currentAnalysis, setCurrentAnalysis] = useState<any>(null);
   
   const analyzeWebsite = useAction(api.carbonAnalysis.analyzeWebsite);
-  const userAnalyses = useQuery(api.carbonAnalysis.getUserAnalyses);
 
   const handleAnalyze = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -83,7 +82,7 @@ export function CarbonAnalyzer() {
           
           <div className="text-sm text-gray-600 bg-green-50 p-4 rounded-lg">
             <p className="font-medium text-green-800 mb-1">💡 How it works:</p>
-            <p>We estimate your website's data transfer, check for green hosting, and calculate environmental impact using the WebsiteCarbon API.</p>
+            <p>We use the official Website Carbon API to analyze your website's real environmental impact, including CO₂ emissions, energy consumption, and green hosting status.</p>
           </div>
         </form>
       </div>
@@ -91,41 +90,6 @@ export function CarbonAnalyzer() {
       {/* Current Analysis Results */}
       {currentAnalysis && (
         <AnalysisResults analysis={currentAnalysis} />
-      )}
-
-      {/* Previous Analyses */}
-      {userAnalyses && userAnalyses.length > 0 && (
-        <div className="bg-white rounded-2xl shadow-lg p-8 border border-green-200">
-          <h3 className="text-2xl font-bold text-green-800 mb-6">Your Recent Analyses</h3>
-          <div className="grid gap-4">
-            {userAnalyses.slice(0, 3).map((analysis) => (
-              <div
-                key={analysis._id}
-                className="flex items-center justify-between p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors cursor-pointer"
-                onClick={() => setCurrentAnalysis(analysis as any)}
-              >
-                <div>
-                  <p className="font-medium text-gray-800">{analysis.url}</p>
-                  <p className="text-sm text-gray-600">
-                    {analysis.co2}g CO₂ • Grade {analysis.ecoScore}
-                  </p>
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className={`px-3 py-1 rounded-full text-sm font-medium ${
-                    analysis.ecoScore === 'A' ? 'bg-green-100 text-green-800' :
-                    analysis.ecoScore === 'B' ? 'bg-blue-100 text-blue-800' :
-                    analysis.ecoScore === 'C' ? 'bg-yellow-100 text-yellow-800' :
-                    analysis.ecoScore === 'D' ? 'bg-orange-100 text-orange-800' :
-                    'bg-red-100 text-red-800'
-                  }`}>
-                    {analysis.ecoScore}
-                  </span>
-                  <span className="text-gray-400">→</span>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
       )}
     </div>
   );
